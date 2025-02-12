@@ -21,8 +21,8 @@ from sklearn.base import BaseEstimator, RegressorMixin
 # =======================================================
 # Step 2: Load Datasets
 # =======================================================
-weather_data = pd.read_excel(r"data\NY_Mesonet_Weather.xlsx")
-uhi_data = pd.read_csv(r"data\Training_data_uhi_index 2025-02-04.csv")
+weather_data = pd.read_excel("NY_manhattan_Mesonet_Weather.xlsx")
+uhi_data = pd.read_csv("Training_data_uhi_index_2025-02-04.csv")
 
 # =======================================================
 # Step 3: Data Preprocessing
