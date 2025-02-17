@@ -1,0 +1,71 @@
+je vais te donner le code jupiter complet de moi # Supress Warnings 
+import warnings
+warnings.filterwarnings('ignore')
+
+# Import common GIS tools
+import numpy as np
+import xarray as xr
+import matplotlib.pyplot as plt
+import rioxarray as rio
+import rasterio
+from matplotlib.cm import jet,RdYlGn
+
+# Import Planetary Computer tools
+import stackstac
+import pystac_client
+import planetary_computer 
+from odc.stac import stac_load # Define the bounding box for the entire data region using (Latitude, Longitude)
+# This is the region of New York City that contains our temperature dataset
+lower_left = (40.75, -74.01)
+upper_right = (40.88, -73.86) # Calculate the bounds for doing an archive data search
+# bounds = (min_lon, min_lat, max_lon, max_lat)
+bounds = (lower_left[1], lower_left[0], upper_right[1], upper_right[0]) # Define the time window
+# We will use a period of 3 months to search for data
+time_window = "2021-06-01/2021-09-01" stac = pystac_client.Client.open("https://planetarycomputer.microsoft.com/api/stac/v1")
+
+search = stac.search(
+    bbox=bounds, 
+    datetime=time_window,
+    collections=["landsat-c2-l2"],
+    query={"eo:cloud_cover": {"lt": 50},"platform": {"in": ["landsat-8"]}},
+) items = list(search.get_items())
+print('This is the number of scenes that touch our region:',len(items)) signed_items = [planetary_computer.sign(item).to_dict() for item in items] # Define the pixel resolution for the final product
+# Define the scale according to our selected crs, so we will use degrees
+resolution = 30  # meters per pixel 
+scale = resolution / 111320.0 # degrees per pixel for crs=4326  ### Landsat Band Summary 
+The following list of bands will be loaded by the Open Data Cube (ODC) stac command:<br>
+We will use two load commands to separate the RGB data from the Surface Temperature data.<br><br>
+Band 2 = blue = 30m<br>
+Band 3 = green = 30m<br>
+Band 4 = red = 30m<br>
+Band 5 = nir08 (near infrared) = 30m<br>
+Band 11 = Surface Temperature = lwir11 = 100m data1 = stac_load(
+    items,
+    bands=["red", "green", "blue", "nir08"],
+    crs="EPSG:4326", # Latitude-Longitude
+    resolution=scale, # Degrees
+    chunks={"x": 2048, "y": 2048},
+    dtype="uint16",
+    patch_url=planetary_computer.sign,
+    bbox=bounds
+) data2 = stac_load(
+    items,
+    bands=["lwir11"],
+    crs="EPSG:4326", # Latitude-Longitude
+    resolution=scale, # Degrees
+    chunks={"x": 2048, "y": 2048},
+    dtype="uint16",
+    patch_url=planetary_computer.sign,
+    bbox=bounds # View the dimensions of our XARRAY and the loaded variables
+# This insures we have the right coordinates and spectral bands in our xarray
+display(data1)
+display(data2) # Scale Factors for the RGB and NIR bands 
+scale1 = 0.0000275 
+offset1 = -0.2 
+data1 = data1.astype(float) * scale1 + offset1 # Scale Factors for the Surface Temperature band
+scale2 = 0.00341802 
+offset2 = 149.0 
+kelvin_celsius = 273.15 # convert from Kelvin to Celsius
+data2 = data2.astype(float) * scale2 + offset2 - kelvin_celsius plot_data = data1[["red","green","blue"]].to_array()
+plot_data.plot.imshow(col='time', col_wrap=4, robust=True, vmin=0, vmax=0.25)
+plt.show() 

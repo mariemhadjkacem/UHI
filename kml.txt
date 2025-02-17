@@ -1,0 +1,61 @@
+L'objectif est d'améliorer le calcul du UHI Index en ajoutant des informations provenant du fichier KML. Ce fichier contient des données géospatiales et temporelles qui peuvent aider à mieux comprendre l’effet de l’îlot de chaleur en fonction des structures urbaines et de l’environnement.
+
+On veut croiser ces données avec notre dataset UHI pour affiner les résultats.
+
+🟠 Étapes d’intégration du KML
+On va procéder en cinq grandes étapes :
+
+1️⃣ Lecture et analyse du fichier KML
+Le fichier KML est un format XML utilisé pour stocker des données géospatiales comme des polygones (zones) ou des points (lieux précis).
+
+Notre KML contient des informations comme :
+timestamp, begin, end → Indiquent la période de validité des données.
+altitudeMode, tessellate, extrude → Décrivent la représentation 3D.
+id, fid, layer, path → Informations sur les objets cartographiques.
+geometry → Contient soit des points (coordonnées GPS précises), soit des polygones (zones entières).
+🎯 But : Extraire ces informations et les rendre exploitables pour l’analyse de l’UHI.
+
+2️⃣ Extraction des données géographiques et temporelles
+Une fois le fichier KML lu, on extrait deux types d’informations :
+
+Les polygones et leurs métadonnées
+Chaque polygone peut représenter une zone urbaine, un bâtiment, une zone végétale, etc.
+Les timestamps associés
+On récupère la période de validité de ces données pour les comparer avec les observations météo/UHI.
+🎯 But : Associer chaque zone (ou point) à une plage de temps et à des coordonnées géographiques.
+
+3️⃣ Correspondance entre les points UHI et les zones KML
+Maintenant que nous avons les zones géographiques KML, nous devons vérifier si nos points de mesure UHI tombent dans ces zones :
+
+On prend chaque point de mesure UHI (latitude, longitude).
+On vérifie si ce point est dans un des polygones du fichier KML.
+Si oui, on associe le point à la zone et on récupère les informations de la couche KML (layer, id, etc.).
+🎯 But : Ajouter une nouvelle colonne à notre dataset UHI avec l’information de la couche KML correspondante.
+
+4️⃣ Fusion des données KML avec les observations UHI
+On fusionne les données KML et UHI en matchant les observations :
+
+Spatialement → En vérifiant si une observation météo/UHI est dans une zone KML.
+Temporellement → En vérifiant si la date de l’observation est comprise dans l’intervalle [begin, end] du fichier KML.
+Deux cas possibles :
+✅ Une correspondance est trouvée → On ajoute la zone KML associée à l’observation.
+❌ Aucune correspondance → On garde l’observation inchangée.
+
+🎯 But : Enrichir notre dataset UHI avec des données spatiales et temporelles issues du fichier KML.
+
+5️⃣ Exploitation pour améliorer le modèle UHI
+Maintenant que nos observations météo/UHI sont associées à des zones urbaines précises, on peut améliorer nos calculs :
+
+Ajouter cette donnée comme une nouvelle variable (KML_Layer) dans notre modèle.
+Faire des analyses pour voir si certaines zones ont un effet UHI plus fort (par exemple, les zones à forte densité de bâtiments peuvent avoir un impact plus important).
+Réentraîner notre modèle de machine learning avec ces nouvelles informations pour améliorer la précision des prédictions UHI.
+🎯 But : Rendre le calcul de l’UHI plus précis et contextuel en intégrant des informations géographiques détaillées.
+
+✅ Résumé
+1️⃣ Lire et analyser le fichier KML.
+2️⃣ Extraire les données spatiales et temporelles.
+3️⃣ Vérifier si les points UHI se trouvent dans une zone KML.
+4️⃣ Fusionner les informations KML avec les observations UHI.
+5️⃣ Utiliser ces nouvelles informations pour améliorer l’analyse et le modèle UHI.
+
+🔹 Veux-tu que je passe maintenant au code pour chaque étape ? 

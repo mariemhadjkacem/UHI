@@ -1,0 +1,174 @@
+import pandas as pd
+import geopy.distance
+import os  
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error
+
+# =======================================================
+# Step 2: Load Datasets
+# =======================================================
+weather_file = "data\\Manhattan.xlsx"
+uhi_file = "data\\Training_data_uhi_index 2025-02-04.csv"
+
+# Check if files exist
+if not os.path.exists(weather_file) or not os.path.exists(uhi_file):
+    print("Error: One or both data files are missing.")
+    exit()
+
+# Read the weather data from Excel and UHI data from CSV
+weather_data = pd.read_excel(weather_file, engine='openpyxl')
+uhi_data = pd.read_csv(uhi_file)
+
+# =======================================================
+# Step 3: Fix Column Names
+# =======================================================
+weather_data.columns = [str(col).strip() for col in weather_data.columns]
+uhi_data.columns = [str(col).strip() for col in uhi_data.columns]
+
+weather_data.rename(columns={'Date/Time': 'Date_Time'}, inplace=True)
+
+# Check if 'UHI Index' exists in the UHI dataset
+uhi_index_column = 'UHI Index' if 'UHI Index' in uhi_data.columns else None
+if not uhi_index_column:
+    print("Error: 'UHI Index' column is missing in the UHI data.")
+    exit()
+
+# =======================================================
+# Step 4: Fix Datetime Issues
+# =======================================================
+uhi_data.rename(columns={'datetime': 'Datetime'}, inplace=True)
+
+# Convert UHI Data datetime format correctly
+uhi_data['Datetime'] = pd.to_datetime(uhi_data['Datetime'], format='%d-%m-%Y %H:%M', errors='coerce')
+
+# Convert Weather Data datetime format correctly
+weather_data['Date_Time'] = pd.to_datetime(weather_data['Date_Time'].str.replace(" EDT", "", regex=False), errors='coerce')
+
+# Drop NaT values in datetime columns
+uhi_data = uhi_data.dropna(subset=['Datetime'])
+
+# =======================================================
+# Step 5: Merge Data (Ensure Matching Data Types)
+# =======================================================
+fusiondata = pd.merge(weather_data, uhi_data, left_on='Date_Time', right_on='Datetime', how='inner')
+
+# Vérifier si la fusion a produit des données
+if fusiondata.empty:
+    print("⚠️ Aucune donnée après la fusion. Vérifie les fichiers source.")
+    exit()
+
+# Supprimer la colonne 'Datetime' en double
+fusiondata.drop(columns=['Datetime'], inplace=True)
+
+# Trier les données fusionnées par ordre chronologique
+fusiondata = fusiondata.sort_values(by='Date_Time')
+
+# Supprimer l'ancien fichier s'il existe
+output_file = os.path.join(os.getcwd(), "mergedui.csv")
+if os.path.exists(output_file):
+    os.remove(output_file)
+
+# Sauvegarder le fichier fusionné sous un nouveau nom
+fusiondata.to_csv(output_file, index=False)
+print(f"✅ Fichier fusionné enregistré ici: {output_file}")
+print(fusiondata.head())  # Vérifie si la variable existe et contient des données
+
+# =======================================================
+# Step 6: Geospatial Feature Engineering - Distance to Water
+# =======================================================
+def get_distance_to_water(lat, lon):
+    try:
+        lat, lon = float(lat), float(lon)  # Ensure numeric input
+        water_coords = (40.7128, -74.0060)  # Example: Hudson River
+        return float(geopy.distance.distance((lat, lon), water_coords).km)  # Ensure a single float
+    except ValueError:
+        return np.nan  # Return NaN if conversion fails
+
+if 'Latitude' in fusiondata.columns and 'Longitude' in fusiondata.columns:
+    fusiondata['distance_to_water'] = fusiondata.apply(lambda row: get_distance_to_water(row['Latitude'], row['Longitude']), axis=1)
+else:
+    print("Warning: 'Latitude' or 'Longitude' column missing. Skipping distance calculation.")
+
+# Drop missing values only for the target column
+fusiondata.dropna(subset=['Air Temp at Surface [degC]'], inplace=True)
+
+# Debug: Check if data remains after dropping
+print("Merged Data Shape After Dropping NA:", fusiondata.shape)
+
+# =======================================================
+# Step 7: Define Features and Target
+# =======================================================
+feature_cols = [
+    'Longitude', 'Latitude', 'Air Temp at Surface [degC]',
+    'Relative Humidity [percent]', 'Avg Wind Speed [m/s]',
+    'Wind Direction [degrees]', 'Solar Flux [W/m^2]', 'UHI Index',
+    'distance_to_water'
+]
+
+# Ensure only existing columns are selected
+feature_cols = [col for col in feature_cols if col in fusiondata.columns]
+X = fusiondata[feature_cols]
+y = fusiondata['UHI Index']
+
+# Debug: Check if X and y have data
+if X.empty or y.empty:
+    print("Error: No data available for training. Check merging and missing values.")
+    exit()
+
+# =======================================================
+# Step 8: Train-Test Split
+# =======================================================
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# =======================================================
+# Step 9: Train and Evaluate Model
+# =======================================================
+model = RandomForestRegressor(n_estimators=100)
+model.fit(X_train, y_train)
+y_pred_test = model.predict(X_test)
+
+# Compute Evaluation Metrics
+mae = mean_absolute_error(y_test, y_pred_test)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred_test))
+r2 = r2_score(y_test, y_pred_test)
+mape = mean_absolute_percentage_error(y_test, y_pred_test)
+
+print(f'Test MAE: {mae}')
+print(f'Test RMSE: {rmse}')
+print(f'Test R^2: {r2}')
+print(f'Test MAPE: {mape}')
+
+# =======================================================
+# Step 10: Predict UHI Index for Given Latitude & Longitude
+# =======================================================
+latitude_input = float(input("Enter Latitude: "))
+longitude_input = float(input("Enter Longitude: "))
+
+user_X = pd.DataFrame(columns=feature_cols)
+user_X.loc[0, 'Longitude'] = longitude_input
+user_X.loc[0, 'Latitude'] = latitude_input
+user_X.loc[0, 'distance_to_water'] = get_distance_to_water(latitude_input, longitude_input)
+
+# Fill missing weather-related values with dataset mean
+for col in feature_cols:
+    if col not in ['Longitude', 'Latitude', 'distance_to_water']:
+        user_X[col] = fusiondata[col].mean()
+
+# Predict UHI Index
+predicted_uhi = model.predict(user_X)
+print(f"\nPredicted UHI Index for Latitude {latitude_input}, Longitude {longitude_input}: {predicted_uhi[0]}")
+
+# =======================================================
+# Step 11: Visualizations
+# =======================================================
+plt.figure(figsize=(8,6))
+plt.scatter(y_test, y_pred_test, alpha=0.6)
+plt.xlabel('Actual UHI Index')
+plt.ylabel('Predicted UHI Index')
+plt.title('Actual vs Predicted UHI Index')
+
+plt.savefig("prediction_plot.png")
+plt.show()
