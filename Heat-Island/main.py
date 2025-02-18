@@ -74,22 +74,7 @@ print(fusiondata.head())
 # =======================================================
 # Step 6: Geospatial Feature Engineering - Distance to Water
 # =======================================================
-"""
-def get_distance_to_water(lat, lon):
-    try:
-        lat, lon = float(lat), float(lon)
-        water_coords = (40.7128, -74.0060)
-        return float(geopy.distance.distance((lat, lon), water_coords).km)
-    except ValueError:
-        return np.nan
 
-if 'Latitude' in fusiondata.columns and 'Longitude' in fusiondata.columns:
-    fusiondata['distance_to_water'] = fusiondata.apply(lambda row: get_distance_to_water(row['Latitude'], row['Longitude']), axis=1)
-else:
-    print("Warning: 'Latitude' or 'Longitude' column missing. Skipping distance calculation.")
-
-fusiondata.dropna(subset=['Air Temp at Surface [degC]'], inplace=True)
-"""
 # =======================================================
 # Step 7: Define Features and Target (Including LST & NDVI)
 # =======================================================
@@ -143,7 +128,7 @@ longitude_input = float(input("Enter Longitude: "))
 user_X = pd.DataFrame(columns=feature_cols)
 user_X.loc[0, 'Longitude'] = longitude_input
 user_X.loc[0, 'Latitude'] = latitude_input
-user_X.loc[0, 'distance_to_water'] = get_distance_to_water(latitude_input, longitude_input)
+
 
 # Remplir les valeurs manquantes de météo avec la moyenne du jeu de données
 for col in feature_cols:
