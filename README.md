@@ -6,7 +6,7 @@ Le projet P2M est un site web dédié à l’étude et la détection de l’effe
 
 Le projet propose notamment une **segmentation automatique des différentes surfaces urbaines** à partir d’images satellite haute résolution, affichée sur une **carte interactive** permettant d’identifier précisément les zones concernées par l’effet UHI.
 
----
+
 
 ## Objectifs du projet
 
@@ -15,7 +15,6 @@ Le projet propose notamment une **segmentation automatique des différentes surf
 - **Prédire** l’indice UHI à l’aide d’un **réseau de neurones artificiels (ANN)**, un modèle de deep learning, basé sur différentes données climatiques et géospatiales.  
 - Offrir une **interface web interactive** pour explorer les données, visualiser les segmentations et les résultats.
 
----
 
 ## Fonctionnalités principales
 
@@ -31,7 +30,7 @@ Le projet propose notamment une **segmentation automatique des différentes surf
 ### 3. Prédiction de l’indice UHI  
 - Modèle **ANN** pour estimer l’indice de l’îlot de chaleur urbain (UHI index) à partir des données climatiques et géospatiales.
 
----
+
 
 ## Technologies utilisées
 
@@ -48,6 +47,5 @@ Le projet propose notamment une **segmentation automatique des différentes surf
   - Building footprints  
 - Interface Web : Streamlit avec intégration de cartes interactives
 
----
 
 
